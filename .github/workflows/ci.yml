@@ -1,0 +1,48 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test-and-lint:
+    uses: ./.github/workflows/reusable-test-lint.yml
+    with:
+      node_versions: '[ "16.x", "18.x", "20.x" ]'
+
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@a1b4a21e... # Pinned SHA
+      - uses: actions/setup-node@d6d7ac... 
+        with:
+          node-version: 18
+      - run: npm ci
+      - run: npm audit --audit-level=moderate
+
+  build:
+    runs-on: ubuntu-latest
+    needs: [test-and-lint, audit]
+    steps:
+      - uses: actions/checkout@a1b4a21e...
+      - uses: actions/setup-node@d6d7ac...
+        with:
+          node-version: 18
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run build
+      - uses: actions/upload-artifact@93... 
+        with:
+          name: build-artifacts
+          path: build/
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/main' && success()
+    steps:
+      - run: echo "Deploying to production..."
+      # Add deployment steps (e.g., to cloud) here
+      # Use secrets like ${{ secrets.CLOUD_API_KEY }}
